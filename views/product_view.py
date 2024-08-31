@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkinter import font as tkfont  # Import the font module
 from services.inventory_service import InventoryService
+# Ensure AddProductView, EditProductView, and SearchProductView are imported or defined elsewhere
 
 class ProductView(tk.Toplevel):
     def __init__(self, master=None):
@@ -29,20 +31,27 @@ class ProductView(tk.Toplevel):
         list_frame = ttk.Frame(self, padding="10")
         list_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # Create a scrollbar
-        scrollbar = ttk.Scrollbar(list_frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Scrollbars
+        self.v_scrollbar = ttk.Scrollbar(list_frame, orient="vertical")
+        self.v_scrollbar.pack(side="right", fill="y")
+
+        self.h_scrollbar = ttk.Scrollbar(list_frame, orient="horizontal")
+        self.h_scrollbar.pack(side="bottom", fill="x")
 
         columns = ('Product ID', 'Name', 'Price', 'Quantity')
-        self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings', yscrollcommand=scrollbar.set)
-        self.product_tree.heading('Product ID', text='Product ID')
-        self.product_tree.heading('Name', text='Name')
-        self.product_tree.heading('Price', text='Price')
-        self.product_tree.heading('Quantity', text='Quantity')
-        self.product_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
+                                         yscrollcommand=self.v_scrollbar.set,
+                                         xscrollcommand=self.h_scrollbar.set)
+        self.product_tree.pack(fill=tk.BOTH, expand=True)
 
-        # Configure the scrollbar
-        scrollbar.config(command=self.product_tree.yview)
+        # Attach scrollbars to Treeview
+        self.v_scrollbar.config(command=self.product_tree.yview)
+        self.h_scrollbar.config(command=self.product_tree.xview)
+
+        # Define headings
+        for col in columns:
+            self.product_tree.heading(col, text=col)
+            self.product_tree.column(col, minwidth=100, stretch=True)  # Autofit columns
 
         self.load_products()
 
@@ -53,6 +62,15 @@ class ProductView(tk.Toplevel):
         products = self.inventory_service.get_all_products()
         for product in products:
             self.product_tree.insert('', tk.END, values=product)
+
+        # Autofit columns
+        font = tkfont.Font()
+        for col in self.product_tree["columns"]:
+            self.product_tree.column(col, width=tkfont.Font().measure(col))
+            for item in self.product_tree.get_children():
+                item_width = tkfont.Font().measure(self.product_tree.set(item, col))
+                if self.product_tree.column(col, width=None) < item_width:
+                    self.product_tree.column(col, width=item_width)
 
     def add_product(self):
         AddProductView(self, self.inventory_service, self.load_products)
@@ -78,7 +96,6 @@ class ProductView(tk.Toplevel):
     def search_product(self):
         SearchProductView(self, self.inventory_service, self.load_products)
 
-# Define AddProductView Class
 class AddProductView(tk.Toplevel):
     def __init__(self, master, inventory_service, reload_callback):
         super().__init__(master)
@@ -113,7 +130,6 @@ class AddProductView(tk.Toplevel):
         self.reload_callback()
         self.destroy()
 
-# Define EditProductView Class
 class EditProductView(tk.Toplevel):
     def __init__(self, master, inventory_service, product_id, reload_callback):
         super().__init__(master)
@@ -153,7 +169,6 @@ class EditProductView(tk.Toplevel):
         self.reload_callback()
         self.destroy()
 
-# Define SearchProductView Class
 class SearchProductView(tk.Toplevel):
     def __init__(self, master, inventory_service, reload_callback):
         super().__init__(master)
